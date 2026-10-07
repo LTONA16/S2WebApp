@@ -1,0 +1,51 @@
+# ==============================================================================
+# Configuración de Nginx para CRUD PHP con PHP-FPM
+# Servidores 2 - Práctica 1 Unidad 2
+# ==============================================================================
+
+server {
+    listen 80;
+    server_name localhost; # O el nombre/IP del servidor
+
+    # Ruta absoluta a la carpeta del proyecto
+    root /home/tokko/Documents/Unison/9semestre/Servidores2/Practica 1 U2/pagina;
+    index index.php index.html;
+
+    # Charset predeterminado
+    charset utf-8;
+
+    # Logs de acceso y error
+    # access_log /var/log/nginx/crud_access.log;
+    # error_log  /var/log/nginx/crud_error.log;
+
+    # Enrutamiento principal
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Procesamiento de scripts PHP a través de PHP-FPM
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php-fpm.sock;
+        # Si PHP-FPM escucha por TCP (puerto 9000), descomenta la siguiente línea:
+        # fastcgi_pass 127.0.0.1:9000;
+        
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_intercept_errors off;
+        fastcgi_buffer_size 16k;
+        fastcgi_buffers 4 16k;
+    }
+
+    # Bloquear acceso a archivos ocultos (como .git)
+    location ~ /\. {
+        deny all;
+    }
+
+    # Optimización de caché para archivos estáticos (CSS, JS, imágenes, SVG)
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 7d;
+        add_header Cache-Control "public, no-transform";
+    }
+}
