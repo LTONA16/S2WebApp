@@ -3,6 +3,7 @@
  * Configuración y conector a la base de datos MySQL.
  * Soporta PDO (recomendado) con fallback automático a MySQLi
  * para compatibilidad total con cualquier entorno PHP-FPM / php-mysql.
+ * Test 2
  */
 
 define('DB_HOST', '192.168.122.160');
