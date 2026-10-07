@@ -179,8 +179,9 @@ try {
             sendResponse(false, 'Método HTTP no permitido.', null, 405);
             break;
     }
-} catch (PDOException $e) {
-    sendResponse(false, 'Error en la base de datos: ' . $e->getMessage(), null, 500);
-} catch (Exception $e) {
-    sendResponse(false, 'Ocurrió un error inesperado: ' . $e->getMessage(), null, 500);
+} catch (Throwable $e) {
+    sendResponse(false, 'Error: ' . $e->getMessage(), [
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine()
+    ], 500);
 }
