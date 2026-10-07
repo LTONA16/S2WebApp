@@ -22,6 +22,11 @@ function sendResponse(bool $success, string $message, $data = null, int $statusC
     exit;
 }
 
+// Medición de longitud segura sin depender de la extensión opcional mbstring
+function strLength(string $str): int {
+    return function_exists('mb_strlen') ? mb_strlen($str, 'UTF-8') : strlen($str);
+}
+
 // Obtener payload (soporta JSON en php://input y form-data en $_POST)
 function getRequestData(): array {
     $rawInput = file_get_contents('php://input');
@@ -88,11 +93,11 @@ try {
                 sendResponse(false, 'El nombre y la carrera son obligatorios.', null, 400);
             }
 
-            if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 100) {
+            if (strLength($nombre) < 3 || strLength($nombre) > 100) {
                 sendResponse(false, 'El nombre debe tener entre 3 y 100 caracteres.', null, 400);
             }
 
-            if (mb_strlen($carrera) < 3 || mb_strlen($carrera) > 100) {
+            if (strLength($carrera) < 3 || strLength($carrera) > 100) {
                 sendResponse(false, 'La carrera debe tener entre 3 y 100 caracteres.', null, 400);
             }
 
@@ -124,11 +129,11 @@ try {
                 sendResponse(false, 'El nombre y la carrera son obligatorios.', null, 400);
             }
 
-            if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 100) {
+            if (strLength($nombre) < 3 || strLength($nombre) > 100) {
                 sendResponse(false, 'El nombre debe tener entre 3 y 100 caracteres.', null, 400);
             }
 
-            if (mb_strlen($carrera) < 3 || mb_strlen($carrera) > 100) {
+            if (strLength($carrera) < 3 || strLength($carrera) > 100) {
                 sendResponse(false, 'La carrera debe tener entre 3 y 100 caracteres.', null, 400);
             }
 
