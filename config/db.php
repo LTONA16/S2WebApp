@@ -1,93 +1,34 @@
 <?php
 /**
  * Configuración y conector a la base de datos MySQL.
- * Soporta PDO (recomendado) con fallback automático a MySQLi
- * para compatibilidad total con cualquier entorno PHP-FPM / php-mysql.
- * Test 2
+ * Soporta conexión nativa PDO con fallback dinámico de host y MySQLi.
  */
 
-define('DB_HOST', '192.168.122.160');
+// Intentar primero conexión local si está en el mismo servidor, o la IP fija
+define('DB_HOST', '127.0.0.1');
+define('DB_HOST_FALLBACK', '192.168.122.160');
 define('DB_USER', 'app_web');
 define('DB_PASS', 'ClaveApp123');
 define('DB_NAME', 'demo_servidores2');
 define('DB_PORT', 3306);
 
-interface DBInterface {
-    public function query(string $sql): array;
-    public function prepare(string $sql): DBStatementInterface;
-    public function lastInsertId(): int;
-}
-
-interface DBStatementInterface {
-    public function execute(array $params = []): bool;
-    public function fetch();
-    public function fetchAll(): array;
-}
-
-// Implementación con PDO
-class PDOWrapper implements DBInterface {
-    private PDO $pdo;
-
-    public function __construct(PDO $pdo) {
-        $this->pdo = $pdo;
-    }
-
-    public function query(string $sql): array {
-        $stmt = $this->pdo->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function prepare(string $sql): DBStatementInterface {
-        return new PDOStatementWrapper($this->pdo->prepare($sql));
-    }
-
-    public function lastInsertId(): int {
-        return (int)$this->pdo->lastInsertId();
-    }
-}
-
-class PDOStatementWrapper implements DBStatementInterface {
-    private PDOStatement $stmt;
-
-    public function __construct(PDOStatement $stmt) {
-        $this->stmt = $stmt;
-    }
-
-    public function execute(array $params = []): bool {
-        return $this->stmt->execute($params);
-    }
-
-    public function fetch() {
-        return $this->stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    public function fetchAll(): array {
-        return $this->stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-}
-
-// Implementación de respaldo con MySQLi
-class MySQLiWrapper implements DBInterface {
+// Clase envoltorio para MySQLi en caso de que PDO MySQL no esté instalado
+class MySQLiDBWrapper {
     private mysqli $mysqli;
 
     public function __construct(mysqli $mysqli) {
         $this->mysqli = $mysqli;
     }
 
-    public function query(string $sql): array {
+    public function query(string $sql) {
         $result = $this->mysqli->query($sql);
         if (!$result) {
             throw new Exception('Error MySQLi query: ' . $this->mysqli->error);
         }
-        $data = [];
-        while ($row = $result->fetch_assoc()) {
-            $data[] = $row;
-        }
-        return $data;
+        return new MySQLiResultWrapper($result);
     }
 
-    public function prepare(string $sql): DBStatementInterface {
-        // Convierte parámetros nominales :param a posicionales ?
+    public function prepare(string $sql) {
         $paramMap = [];
         $transformedSql = preg_replace_callback('/:([a-zA-Z0-9_]+)/', function($matches) use (&$paramMap) {
             $paramMap[] = ':' . $matches[1];
@@ -99,7 +40,7 @@ class MySQLiWrapper implements DBInterface {
             throw new Exception('Error MySQLi prepare: ' . $this->mysqli->error);
         }
 
-        return new MySQLiStatementWrapper($this->mysqli, $stmt, $paramMap);
+        return new MySQLiStmtWrapper($this->mysqli, $stmt, $paramMap);
     }
 
     public function lastInsertId(): int {
@@ -107,7 +48,27 @@ class MySQLiWrapper implements DBInterface {
     }
 }
 
-class MySQLiStatementWrapper implements DBStatementInterface {
+class MySQLiResultWrapper {
+    private mysqli_result $result;
+
+    public function __construct(mysqli_result $result) {
+        $this->result = $result;
+    }
+
+    public function fetch() {
+        return $this->result->fetch_assoc();
+    }
+
+    public function fetchAll(): array {
+        $data = [];
+        while ($row = $this->result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        return $data;
+    }
+}
+
+class MySQLiStmtWrapper {
     private mysqli $mysqli;
     private mysqli_stmt $stmt;
     private array $paramMap;
@@ -157,50 +118,56 @@ class MySQLiStatementWrapper implements DBStatementInterface {
     }
 }
 
-function getDBConnection(): DBInterface {
-    static $db = null;
+function getDBConnection() {
+    static $connection = null;
 
-    if ($db !== null) {
-        return $db;
+    if ($connection !== null) {
+        return $connection;
     }
 
-    // 1. Intentar PDO si el driver pdo_mysql está disponible
+    $hosts = [DB_HOST, DB_HOST_FALLBACK];
+    $pdoErrors = [];
+
+    // 1. Intentar con PDO nativo
     if (extension_loaded('pdo') && in_array('mysql', PDO::getAvailableDrivers(), true)) {
-        try {
-            $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', DB_HOST, DB_PORT, DB_NAME);
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES   => false,
-            ]);
-            $db = new PDOWrapper($pdo);
-            return $db;
-        } catch (PDOException $e) {
-            // Intentar con MySQLi si falla
+        foreach ($hosts as $host) {
+            try {
+                $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $host, DB_PORT, DB_NAME);
+                $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                ]);
+                $connection = $pdo;
+                return $connection;
+            } catch (PDOException $e) {
+                $pdoErrors[] = "Host $host: " . $e->getMessage();
+            }
         }
     }
 
-    // 2. Intentar MySQLi si está disponible
+    // 2. Intentar con MySQLi
     if (class_exists('mysqli')) {
-        try {
-            $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-            if ($mysqli->connect_error) {
-                throw new Exception('Error de conexión MySQLi: ' . $mysqli->connect_error);
+        foreach ($hosts as $host) {
+            try {
+                $mysqli = @new mysqli($host, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+                if (!$mysqli->connect_error) {
+                    $mysqli->set_charset('utf8mb4');
+                    $connection = new MySQLiDBWrapper($mysqli);
+                    return $connection;
+                }
+            } catch (Throwable $e) {
+                // Siguiente intento
             }
-            $mysqli->set_charset('utf8mb4');
-            $db = new MySQLiWrapper($mysqli);
-            return $db;
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-            exit;
         }
     }
 
     http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'success' => false,
-        'message' => 'No se encontró ningún driver MySQL disponible (PDO MySQL o MySQLi).'
+        'message' => 'No se pudo conectar a la base de datos MySQL.',
+        'details' => $pdoErrors
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }

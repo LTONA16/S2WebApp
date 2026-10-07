@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Estilos de la aplicación -->
-    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/css/styles.css?v=2.0">
 </head>
 <body>
     <div class="container">
@@ -177,6 +177,6 @@
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Script Principal -->
-    <script src="assets/js/app.js"></script>
+    <script src="assets/js/app.js?v=2.0"></script>
 </body>
 </html>
