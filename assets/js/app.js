@@ -253,8 +253,8 @@ document.addEventListener('DOMContentLoaded', () => {
        ========================================================================== */
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
-        const filtered = alumnosList.filter(a => 
-            a.nombre.toLowerCase().includes(query) || 
+        const filtered = alumnosList.filter(a =>
+            a.nombre.toLowerCase().includes(query) ||
             a.carrera.toLowerCase().includes(query) ||
             String(a.id).includes(query)
         );
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!result.success) {
                 if (response.status === 403 || result.data?.error_type === 'permission_denied') {
-                    Toast.show(result.message, 'warning', '🔒 Seguridad de BD (Permiso Denegado)', 6500);
+                    Toast.show(result.message, 'warning', 'Permiso Denegado', 6500);
                     closeModal(alumnoModalOverlay);
                     return;
                 }
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!result.success) {
                 if (response.status === 403 || result.data?.error_type === 'permission_denied') {
-                    Toast.show(result.message, 'warning', '🔒 Seguridad de BD (Permiso Denegado)', 6500);
+                    Toast.show(result.message, 'warning', 'Permiso Denegado', 6500);
                     closeModal(deleteModalOverlay);
                     alumnoToDelete = null;
                     return;
