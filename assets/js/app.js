@@ -346,6 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
 
             if (!result.success) {
+                if (response.status === 403 || result.data?.error_type === 'permission_denied') {
+                    Toast.show(result.message, 'warning', '🔒 Seguridad de BD (Permiso Denegado)', 6500);
+                    closeModal(alumnoModalOverlay);
+                    return;
+                }
                 throw new Error(result.message || 'Error al procesar la solicitud.');
             }
 
@@ -377,6 +382,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
 
             if (!result.success) {
+                if (response.status === 403 || result.data?.error_type === 'permission_denied') {
+                    Toast.show(result.message, 'warning', '🔒 Seguridad de BD (Permiso Denegado)', 6500);
+                    closeModal(deleteModalOverlay);
+                    alumnoToDelete = null;
+                    return;
+                }
                 throw new Error(result.message || 'No se pudo eliminar el registro.');
             }
 

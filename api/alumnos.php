@@ -185,7 +185,22 @@ try {
             break;
     }
 } catch (Throwable $e) {
-    sendResponse(false, 'Error: ' . $e->getMessage(), [
+    $msg = $e->getMessage();
+
+    // Detección de privilegios insuficientes en MySQL (Código 1142 / command denied)
+    if (strpos($msg, 'command denied') !== false || strpos($msg, '1142') !== false || stripos($msg, 'Access denied') !== false) {
+        $accion = 'esta operación';
+        if ($method === 'PUT') $accion = 'UPDATE (Modificación)';
+        if ($method === 'DELETE') $accion = 'DELETE (Eliminación)';
+
+        sendResponse(false, "Seguridad de Base de Datos: El usuario 'app_web' no tiene privilegios de $accion sobre la tabla 'alumnos'.", [
+            'error_type' => 'permission_denied',
+            'action'     => $method,
+            'detail'     => $msg
+        ], 403);
+    }
+
+    sendResponse(false, 'Error: ' . $msg, [
         'file' => basename($e->getFile()),
         'line' => $e->getLine()
     ], 500);

@@ -177,6 +177,6 @@
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Script Principal -->
-    <script src="assets/js/app.js?v=2.0"></script>
+    <script src="assets/js/app.js?v=3.0"></script>
 </body>
 </html>
